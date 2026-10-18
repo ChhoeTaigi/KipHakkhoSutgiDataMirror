@@ -14,12 +14,6 @@ import sys
 import zipfile
 import xml.etree.ElementTree as ET
 
-try:
-    from kpl_to_poj import kpl_to_poj
-except ImportError:
-    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    from kpl_to_poj import kpl_to_poj
-
 NS = {
     "office": "urn:oasis:names:tc:opendocument:xmlns:office:1.0",
     "table": "urn:oasis:names:tc:opendocument:xmlns:table:1.0",
@@ -54,9 +48,16 @@ RENAME_COLUMNS = {
     "臺羅": "KPL",
 }
 
-# POJ (Pe̍h-ōe-jī) is derived from the 臺羅 (published as KPL) column and inserted right after it.
-TAILO_COLUMN = "臺羅"
-POJ_COLUMN = "POJ"
+# Source columns the conversion depends on; a renamed or dropped one is an error.
+REQUIRED_COLUMNS = list(RENAME_COLUMNS) + STAGE_COLUMNS
+
+# Every term has its own page on the source site, addressed by 序號 (published as 編號):
+# https://stti.moe.edu.tw/search/search-result/100071/?lang=sutgi → 三角形. The link is
+# appended as the last column. SITE is shared with update_data.py.
+SITE = "https://stti.moe.edu.tw"
+ID_COLUMN = RENAME_COLUMNS["序號"]
+URL_COLUMN = "網址"
+URL_TEMPLATE = SITE + "/search/search-result/{}/?lang=sutgi"
 
 
 def _paragraph_text(p):
@@ -160,20 +161,31 @@ def _merge_hunlui(record):
     return out
 
 
-def _rename_and_add_poj(record):
-    out = {}
-    for k, v in record.items():
-        out[RENAME_COLUMNS.get(k, k)] = v
-        if k == TAILO_COLUMN:
-            out[POJ_COLUMN] = "\n".join(kpl_to_poj(line) for line in v.split("\n"))
-    return out
+def _rename(record):
+    return {RENAME_COLUMNS.get(k, k): v for k, v in record.items()}
+
+
+def _add_url(record):
+    """Append the term's page on the source site, built from its 編號 (empty unless numeric)."""
+    term_id = record.get(ID_COLUMN)
+    url = URL_TEMPLATE.format(term_id) if isinstance(term_id, int) else ""
+    return {**record, URL_COLUMN: url}
+
+
+def _transform(record):
+    return _add_url(_rename(_merge_hunlui(_coerce(record))))
 
 
 def convert_KipHakkhoSutgiData(input_file=INPUT_FILE, csv_output=CSV_OUTPUT, json_output=JSON_OUTPUT):
     print(f"Reading {input_file}...")
     sheet_name, header, records = read_ods(input_file)
-    records = [_rename_and_add_poj(_merge_hunlui(_coerce(r))) for r in records]
-    header = list(records[0].keys()) if records else header
+    missing = [c for c in REQUIRED_COLUMNS if c not in header]
+    if missing:
+        raise ValueError(f"Sheet '{sheet_name}' lacks expected source column(s): {missing}")
+    records = [_transform(r) for r in records]
+    # Derive the published header from the source header, so even a header-only
+    # sheet is written with the documented columns.
+    header = list(_transform(dict.fromkeys(header, "")).keys())
     print(f"Sheet '{sheet_name}': {len(records)} rows, columns: {header}")
 
     os.makedirs(os.path.dirname(csv_output), exist_ok=True)

@@ -6,8 +6,13 @@ Flow:
 2. Download it to a temp dir and compare its SHA256 against public/manifest.json.
 3. On change, create public/{YYYYMMDD-HHMM}/, store the original under
    tangloo/ (gitignored) and convert it to bunji/ CSV + JSON.
+
+Pass --force to create a new version directory even when the source is
+unchanged, e.g. after a converter change that alters the published columns.
+The manifest's `last_updated` then moves while `source_last_changed` stays put.
 """
 
+import argparse
 import datetime
 import hashlib
 import html
@@ -22,12 +27,11 @@ from urllib.parse import urljoin
 import requests
 
 try:
-    from convert_KipHakkhoSutgiData import convert_KipHakkhoSutgiData
+    from convert_KipHakkhoSutgiData import SITE, convert_KipHakkhoSutgiData
 except ImportError:
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    from convert_KipHakkhoSutgiData import convert_KipHakkhoSutgiData
+    from convert_KipHakkhoSutgiData import SITE, convert_KipHakkhoSutgiData
 
-SITE = "https://stti.moe.edu.tw"
 URL_DOWNLOAD_PAGE = f"{SITE}/file-download/newsData/?lang=sutgi"
 USER_AGENT = "Mozilla/5.0 (KipHakkhoSutgiDataMirror; +https://github.com/ChhoeTaigi/KipHakkhoSutgiDataMirror)"
 
@@ -89,7 +93,7 @@ def save_manifest(data):
         f.write("\n")
 
 
-def main():
+def main(force=False):
     print("Starting update check...")
     temp_dir = PUBLIC_DIR / "temp_update"
     temp_dir.mkdir(parents=True, exist_ok=True)
@@ -104,7 +108,7 @@ def main():
         old_hash = manifest.get("files", {}).get(LOCAL_ODS_NAME)
         target_dir = None
 
-        if old_hash == new_hash:
+        if old_hash == new_hash and not force:
             print("No changes detected.")
             latest = manifest.get("latest_version_dir")
             if latest and (PUBLIC_DIR / latest).exists():
@@ -112,6 +116,8 @@ def main():
                 print(f"Using existing latest directory: {target_dir}")
             else:
                 print("Latest version directory missing. Creating a new one.")
+        elif old_hash == new_hash:
+            print("No changes detected, but --force given: creating a new version.")
         else:
             print("Change detected." if old_hash else "No existing manifest. Initial import.")
 
@@ -122,8 +128,15 @@ def main():
             shutil.move(str(temp_ods), str(tangloo_dir / LOCAL_ODS_NAME))
             print(f"Created version directory: {target_dir}")
 
+            now = datetime.datetime.now().isoformat()
+            if old_hash == new_hash:
+                # Forced regeneration or missing directory: the source itself did not change.
+                source_last_changed = manifest.get("source_last_changed", manifest.get("last_updated", now))
+            else:
+                source_last_changed = now
             save_manifest({
-                "last_updated": datetime.datetime.now().isoformat(),
+                "last_updated": now,
+                "source_last_changed": source_last_changed,
                 "latest_version_dir": target_dir.name,
                 "source": {LOCAL_ODS_NAME: {"url": ods_url, "filename": source_name}},
                 "files": {LOCAL_ODS_NAME: new_hash},
@@ -152,4 +165,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="create a new version directory even when the source is unchanged",
+    )
+    main(force=parser.parse_args().force)
