@@ -12,7 +12,7 @@ Data mirror for ChhoeTaigi KipHakkhoSutgi (教育部學科術語臺灣台語對�
 
 ## Latest Version
 
-* **Version ID:** `20261019-0058`
+* **Version ID:** `20261019-0131`
 * **Last Updated:** 2026-10-19
 * **Source File:** `ttg_20241219.ods`
 
@@ -20,17 +20,18 @@ You can check [**manifest.json**](./public/manifest.json) for the latest version
 
 ## Accessing Files
 
-The files are organized by version. The latest files are in `public/20261019-0058/`.
+The files are organized by version. The latest files are in `public/20261019-0131/`.
 
 ### Text Data (`bunji/`)
 
-* [**KipHakkhoSutgiData.csv** (Terminology Data CSV)](./public/20261019-0058/bunji/KipHakkhoSutgiData.csv)
-* [**KipHakkhoSutgiData.json** (Terminology Data JSON)](./public/20261019-0058/bunji/KipHakkhoSutgiData.json)
-* **Base URL:** `https://chhoetaigi.github.io/KipHakkhoSutgiDataMirror/public/20261019-0058/bunji/`
+* [**KipHakkhoSutgiData.csv** (Terminology Data CSV)](./public/20261019-0131/bunji/KipHakkhoSutgiData.csv)
+* [**KipHakkhoSutgiData.json** (Terminology Data JSON)](./public/20261019-0131/bunji/KipHakkhoSutgiData.json)
+* **Base URL:** `https://chhoetaigi.github.io/KipHakkhoSutgiDataMirror/public/20261019-0131/bunji/`
 * **Columns:** `編號, 中文, 中文解說, 分類, 臺灣台語詞彙(漢字), KPL, 網址`
 * **`分類`:** the source's five columns `第1階段`–`第5階段` (each holding `學習領域-科目` lines) are merged into one column whose lines read `學習領域-學習階段-科目`, e.g. `社會-第1階段-生活課程`. A few source lines carry only the 學習領域; those read `學習領域-學習階段`.
 * **`網址`:** direct link to the term's page on the source site, `https://stti.moe.edu.tw/search/search-result/{編號}/?lang=sutgi`, e.g. <https://stti.moe.edu.tw/search/search-result/100071/?lang=sutgi> for 三角形. Empty if `編號` is ever non-numeric.
 * **Renamed columns:** `序號` → `編號`, `學科術語` → `中文`, `參考解釋` → `中文解說`, `臺灣台語詞彙` → `臺灣台語詞彙(漢字)`, `臺羅` → `KPL` (Kàu-io̍k Pō͘ Lô-má-jī, Tâi-lô).
+* **CSV quoting:** every field, including the header, is wrapped in double quotes (`"`); embedded `"` is doubled per RFC 4180.
 * **Multi-value cells:** cells holding several lines in the source (e.g. several `KPL` readings) are kept as one string with `\n` between lines, in both CSV and JSON.
 * **Rows:** 4,650 terms, one row per `編號`.
 

@@ -190,7 +190,7 @@ def convert_KipHakkhoSutgiData(input_file=INPUT_FILE, csv_output=CSV_OUTPUT, jso
 
     os.makedirs(os.path.dirname(csv_output), exist_ok=True)
     with open(csv_output, "w", encoding="utf-8", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=header)
+        w = csv.DictWriter(f, fieldnames=header, quoting=csv.QUOTE_ALL)
         w.writeheader()
         w.writerows(records)
     print(f"Wrote {csv_output}")
